@@ -43,6 +43,19 @@
 
         p.subtitle { color: var(--text-muted); font-size: 1.1em; }
 
+        /* Sello de Seguridad */
+        .security-badge {
+            text-align: center;
+            color: var(--success);
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 25px;
+            padding: 10px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
         /* Estilos del Login */
         .auth-container {
             text-align: center;
@@ -178,6 +191,39 @@
         .stat-box h2 { margin: 0; font-size: 2.5em; color: var(--text-main); }
         .stat-box span { color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;}
 
+        /* Controles de Dashboard (Buscador y Reinicio) */
+        .dashboard-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #3a3a48;
+            background: var(--bg-base);
+            color: white;
+            font-size: 1em;
+            min-width: 250px;
+        }
+        
+        .search-input:focus { outline: none; border-color: var(--accent-3); }
+
+        .btn-reset {
+            background: var(--bg-hover);
+            color: white;
+            border: 1px solid #3a3a48;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-reset:hover { background: #3a3a48; }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -245,6 +291,15 @@
         .users-list li::before { content: '@'; color: var(--accent-1); }
         .users-list li a { color: var(--text-main); text-decoration: none; }
         .users-list li a:hover { color: var(--accent-3); }
+
+        .teaser-box {
+            margin: 0 20px 20px 20px;
+            padding: 20px;
+            background: rgba(220, 39, 67, 0.1);
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(220, 39, 67, 0.3);
+        }
         
     </style>
 </head>
@@ -265,12 +320,16 @@
                 <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
                 <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
             </svg>
-            Ingresar con Google
+            Ingresar con Google para versión completa
         </button>
         <p id="user-greeting-auth"></p>
     </div>
 
-    <!-- INSTRUCCIONES AGREGADAS -->
+    <!-- SELLO DE SEGURIDAD -->
+    <div class="security-badge">
+        🔒 100% Privado y Seguro. El cruce de datos se realiza localmente. Ningún archivo se sube a internet.
+    </div>
+
     <div class="instructions-box" id="instructions">
         <b>¿Cómo obtengo mis archivos de forma segura?</b>
         <ol>
@@ -278,7 +337,7 @@
             <li>Bajá hasta <b>Descargar tu información</b> > Descargar o transferir información.</li>
             <li>Elegí tu cuenta y seleccioná <b>Parte de tu información</b> (marcá solo "Seguidores y seguidos").</li>
             <li>⚠️ <b>¡MUY IMPORTANTE!</b> Elegí "Descargar en el dispositivo" y cambiá el Formato a <b>JSON</b>.</li>
-            <li>Cuando te llegue el mail, descargá el ZIP, extraelo y subí los archivos abajo. Ningún dato sale de tu dispositivo.</li>
+            <li>Cuando te llegue el mail, descargá el ZIP, extraelo y subí los archivos abajo.</li>
         </ol>
     </div>
 
@@ -318,6 +377,12 @@
             </div>
         </div>
 
+        <!-- CONTROLES NUEVOS: BUSCADOR Y REINICIO -->
+        <div class="dashboard-controls">
+            <input type="text" id="search-input" class="search-input" placeholder="🔍 Buscar usuario en la lista..." oninput="window.filtrarBusqueda(this.value)">
+            <button class="btn-reset" onclick="window.location.reload()">🔄 Reiniciar Auditoría</button>
+        </div>
+
         <div class="tabs">
             <button class="tab-btn active" onclick="window.switchTab('unfollowers', this)">
                 No me siguen <span class="badge" id="badge-unfollowers">0</span>
@@ -332,6 +397,7 @@
 
         <div class="list-wrapper" id="list-wrapper">
             <ul class="users-list" id="users-list"></ul>
+            <!-- El botón de exportar y el cartel freemium se inyectan acá vía JS -->
         </div>
     </div>
 </div>
@@ -343,7 +409,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    // Configuración real de tu proyecto
     const firebaseConfig = {
         apiKey: "AIzaSyAM4A5XKkWLRmGWxfk09s2mv4KDuGJe94g",
         authDomain: "filtroinstagram-45f1c.firebaseapp.com",
@@ -360,36 +425,41 @@
 
     const btnLogin = document.getElementById('btn-login');
     const userGreeting = document.getElementById('user-greeting-auth');
+    
+    // Variable global para que el dashboard sepa si mostrar todo o limitar
+    window.isUserPremium = false; 
 
     btnLogin.addEventListener('click', () => {
         signInWithPopup(auth, provider)
-            .then((result) => {
-                console.log("Ingreso exitoso", result.user);
-            })
-            .catch((error) => {
-                console.error("Error al iniciar sesión", error);
-                alert("Hubo un error al iniciar sesión. Revisá la consola (F12) para más detalles.");
-            });
+            .then((result) => { console.log("Ingreso exitoso", result.user); })
+            .catch((error) => { alert("Hubo un error al iniciar sesión."); });
     });
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             btnLogin.style.display = 'none';
             userGreeting.style.display = 'block';
-            userGreeting.textContent = `¡Hola, ${user.displayName}! Listo para auditar.`;
+            userGreeting.textContent = `✅ Hola, ${user.displayName}. Funciones completas desbloqueadas.`;
+            window.isUserPremium = true;
+            // Si el dashboard está abierto, recargamos la lista sin límites
+            if(document.getElementById('dashboard').style.display === 'block'){
+                window.renderizarLista(window.currentTab);
+            }
         } else {
             btnLogin.style.display = 'inline-flex';
             userGreeting.style.display = 'none';
+            window.isUserPremium = false;
         }
     });
 </script>
 
 <!-- ========================================== -->
-<!-- SCRIPT 2: LÓGICA ORIGINAL DE TU APP        -->
+<!-- SCRIPT 2: LÓGICA PRINCIPAL (CON BUSCADOR Y FREEMIUM) -->
 <!-- ========================================== -->
 <script>
     let listasData = { unfollowers: [], fans: [], mutuals: [] };
     window.currentTab = 'unfollowers';
+    window.terminoBusqueda = ''; // Para el buscador en tiempo real
 
     window.validarArchivo = function(input, nombreEsperado, idBadgeExito, idBadgeError) {
         const badgeExito = document.getElementById(idBadgeExito);
@@ -397,7 +467,6 @@
 
         if (input.files.length > 0) {
             const archivoNombre = input.files[0].name;
-            
             if (archivoNombre === nombreEsperado) {
                 badgeExito.style.display = 'inline-block';
                 badgeError.style.display = 'none';
@@ -416,7 +485,6 @@
     window.checkFiles = function() {
         const f1 = document.getElementById('file-followers');
         const f2 = document.getElementById('file-following');
-        
         const file1Valid = f1.files.length > 0 && f1.files[0].name === 'followers_1.json';
         const file2Valid = f2.files.length > 0 && f2.files[0].name === 'following.json';
         
@@ -438,9 +506,7 @@
                 });
             } else if (data && data.relationships_following && Array.isArray(data.relationships_following)) {
                 data.relationships_following.forEach(item => {
-                    if (item.title) {
-                        users.add(item.title.trim());
-                    }
+                    if (item.title) users.add(item.title.trim());
                 });
             } else {
                 function buscarUsuarios(obj) {
@@ -482,8 +548,7 @@
         const fileFollowers = document.getElementById('file-followers').files[0];
         const fileFollowing = document.getElementById('file-following').files[0];
         const btn = document.getElementById('btn-analyze');
-        const instrucciones = document.getElementById('instructions');
-
+        
         btn.textContent = "Procesando métricas...";
         btn.classList.remove('active');
 
@@ -499,20 +564,18 @@
             document.getElementById('total-following').textContent = setFollowing.size;
             
             let ratio = 0;
-            if (setFollowing.size > 0) {
-                ratio = (setFollowers.size / setFollowing.size).toFixed(2);
-            } else if (setFollowers.size > 0) {
-                ratio = setFollowers.size;
-            }
+            if (setFollowing.size > 0) ratio = (setFollowers.size / setFollowing.size).toFixed(2);
+            else if (setFollowers.size > 0) ratio = setFollowers.size;
+            
             document.getElementById('ratio-seguimiento').textContent = ratio;
-
             document.getElementById('badge-unfollowers').textContent = listasData.unfollowers.length;
             document.getElementById('badge-fans').textContent = listasData.fans.length;
             document.getElementById('badge-mutuals').textContent = listasData.mutuals.length;
 
+            // Ocultamos la subida y mostramos el dashboard
             document.getElementById('upload-section').style.display = 'none';
-            if(instrucciones) instrucciones.style.display = 'none';
-            
+            document.getElementById('instructions').style.display = 'none';
+            document.querySelector('.security-badge').style.display = 'none';
             btn.style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             
@@ -526,6 +589,12 @@
         }
     }
 
+    // Buscador en tiempo real
+    window.filtrarBusqueda = function(valor) {
+        window.terminoBusqueda = valor.toLowerCase();
+        window.renderizarLista(window.currentTab);
+    }
+
     window.switchTab = function(tipo, element) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         element.classList.add('active');
@@ -533,69 +602,89 @@
         window.renderizarLista(tipo);
     }
 
-    window.renderizarLista = function(tipo, mostrarTodos = false) {
+    window.renderizarLista = function(tipo) {
         const listaUI = document.getElementById('users-list');
         const listWrapper = document.getElementById('list-wrapper');
         
+        // Limpiar el DOM anterior
         listaUI.innerHTML = "";
-        const botonesViejos = document.querySelectorAll('.btn-exportar');
-        botonesViejos.forEach(btn => btn.remove());
+        const elementosExtras = listWrapper.querySelectorAll('.btn-exportar, .teaser-box');
+        elementosExtras.forEach(el => el.remove());
 
-        const dataTotal = listasData[tipo];
+        // 1. Filtrar por buscador
+        let dataFiltrada = listasData[tipo];
+        if(window.terminoBusqueda !== '') {
+            dataFiltrada = dataFiltrada.filter(user => user.toLowerCase().includes(window.terminoBusqueda));
+        }
         
-        if(dataTotal.length === 0) {
-            listaUI.innerHTML = "<li style='grid-column: 1/-1; justify-content: center; padding: 30px;'>No se encontraron usuarios en esta sección. ¡Todo en orden! 🚀</li>";
-            listWrapper.style.height = "auto";
+        if(dataFiltrada.length === 0) {
+            listaUI.innerHTML = "<li style='grid-column: 1/-1; justify-content: center; padding: 30px;'>No se encontraron usuarios.</li>";
             return;
         }
 
-        const btnExport = document.createElement('button');
-        btnExport.className = 'btn-main active btn-exportar';
-        btnExport.style.margin = '20px 20px 0 20px';
-        btnExport.style.width = 'calc(100% - 40px)';
-        btnExport.style.padding = '12px';
-        btnExport.style.fontSize = '1em';
-        btnExport.textContent = `📥 Descargar lista (.txt) - ${dataTotal.length} usuarios`;
-        
-        btnExport.onclick = () => {
-            const texto = dataTotal.join('\n');
-            const blob = new Blob([texto], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `FiltroInstagram_${tipo}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        };
-
-        listWrapper.insertBefore(btnExport, listaUI);
-
+        // 2. Lógica Freemium (Límite de 15 si no está logueado)
         const limiteVisual = 15;
-        const usuariosAMostrar = mostrarTodos ? dataTotal : dataTotal.slice(0, limiteVisual);
+        const estaDesbloqueado = window.isUserPremium; // Viene del Auth
+        const usuariosAMostrar = estaDesbloqueado ? dataFiltrada : dataFiltrada.slice(0, limiteVisual);
+        const usuariosOcultos = dataFiltrada.length - usuariosAMostrar.length;
 
+        // Renderizar usuarios visibles
         usuariosAMostrar.forEach(user => {
             const li = document.createElement('li');
             li.innerHTML = `<a href="https://instagram.com/${user}" target="_blank">${user}</a>`;
             listaUI.appendChild(li);
         });
 
-        if (!mostrarTodos && dataTotal.length > limiteVisual) {
-            const liCargarMas = document.createElement('li');
-            liCargarMas.style.gridColumn = '1/-1'; 
-            liCargarMas.style.justifyContent = 'center';
-            liCargarMas.style.background = 'transparent';
+        // 3. Renderizar Efecto Blur y Paywall si hay ocultos
+        if (!estaDesbloqueado && usuariosOcultos > 0) {
+            const bultos = Math.min(usuariosOcultos, 3);
+            for(let i=0; i<bultos; i++) {
+                const liBlur = document.createElement('li');
+                liBlur.innerHTML = `<span>@usuario_privado_***</span>`;
+                liBlur.style.filter = "blur(4px)";
+                liBlur.style.opacity = "0.5";
+                liBlur.style.pointerEvents = "none";
+                listaUI.appendChild(liBlur);
+            }
 
-            const btnCargarMas = document.createElement('button');
-            btnCargarMas.className = 'tab-btn active';
-            btnCargarMas.textContent = `👁️ Mostrar los ${dataTotal.length - limiteVisual} restantes`;
-            btnCargarMas.style.width = '100%';
-            btnCargarMas.onclick = () => window.renderizarLista(tipo, true); 
-
-            liCargarMas.appendChild(btnCargarMas);
-            listaUI.appendChild(liCargarMas);
+            const teaser = document.createElement('div');
+            teaser.className = 'teaser-box';
+            teaser.innerHTML = `
+                <h3 style="margin: 0 0 10px 0; color: var(--text-main);">🔒 Hay <span style="color: var(--accent-1);">${usuariosOcultos}</span> cuentas ocultas más</h3>
+                <p style="margin: 0; color: var(--text-muted); font-size: 0.9em;">Iniciá sesión con Google gratis en la parte superior para ver la lista completa.</p>
+            `;
+            listWrapper.appendChild(teaser);
         }
 
-        listWrapper.style.height = "auto";
+        // 4. Botón de Exportación (Descarga solo lo que el usuario tiene derecho a ver)
+        const btnExport = document.createElement('button');
+        btnExport.className = 'btn-main active btn-exportar';
+        btnExport.style.margin = '0 20px 20px 20px';
+        btnExport.style.width = 'calc(100% - 40px)';
+        btnExport.style.padding = '12px';
+        btnExport.style.fontSize = '1em';
+        
+        if (!estaDesbloqueado && usuariosOcultos > 0) {
+            btnExport.textContent = `📥 Descargar Muestra Gratuita (${usuariosAMostrar.length} de ${dataFiltrada.length})`;
+        } else {
+            btnExport.textContent = `📥 Descargar Lista Completa (.txt)`;
+        }
+        
+        // Función 100% segura para el TXT
+        btnExport.addEventListener('click', () => {
+            const texto = usuariosAMostrar.join('\n');
+            const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `FiltroInstagram_${tipo}.txt`;
+            document.body.appendChild(a); // Requisito en algunos navegadores
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        listWrapper.appendChild(btnExport);
     }
 </script>
 </body>
