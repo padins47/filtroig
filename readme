@@ -1,0 +1,41 @@
+Eres un Desarrollador Full-Stack Experto. Necesito migrar una maqueta Frontend (HTML/CSS/JS) a una aplicación web SaaS completa y funcional llamada "FiltroInstagram". 
+
+La aplicación analiza archivos JSON de Instagram (followers_1.json y following.json) localmente en el navegador, y aplica un modelo de negocio Freemium. El diseño de la maqueta actual es "Dark Mode" moderno, minimalista, e incluye procesamiento interactivo por pestañas (Traidores, Fans, Mutuos).
+
+**STACK TECNOLÓGICO REQUERIDO:**
+- Frontend: Mantenemos la lógica de la maqueta en HTML/CSS/JS o la pasamos a React/Next.js (Tailwind) respetando exactamente el esquema de colores oscuros (`#0f0f13`, cards en `#1c1c24`, y acentos con el gradiente de Instagram).
+- Autenticación & Base de Datos: Firebase (Auth con GoogleProvider, Firestore).
+- Pagos: Mercado Pago SDK (Checkout Pro en pesos argentinos ARS).
+- Backend: Firebase Cloud Functions (Node.js) para crear las preferencias de pago y manejar los Webhooks.
+
+**REQUERIMIENTOS Y LÓGICA DE NEGOCIO:**
+
+1. **Privacidad y Operaciones Locales:** 
+El cruce de datos debe seguir siendo estrictamente en el cliente (navegador). Los archivos JSON NUNCA se suben al servidor.
+Las operaciones a mantener son:
+- Unfollowers (Traidores): Sigo pero no me siguen.
+- Fans: Me siguen pero no sigo.
+- Mutuals (Mutuos): Intersección.
+
+2. **Modelo Freemium (Regla de 30):**
+- El usuario puede subir los archivos sin estar logueado. El sistema procesa las listas y, al navegar por las pestañas, renderiza ÚNICAMENTE los primeros 30 resultados de cada array.
+- Si el array de la pestaña actual tiene `> 30` usuarios, la lista se difumina (efecto blur en los últimos ítems) y se levanta un componente "Paywall Overlay" sobre la lista.
+
+3. **Autenticación (Firebase Auth):**
+- El Paywall contiene un botón "Acceder con Google". 
+- Al loguearse por primera vez, se crea el documento en Firestore: `users/{uid}` con `creditos: 0`.
+
+4. **Flujo de Pago (Mercado Pago):**
+- Si el usuario está logueado y sus `creditos === 0`, el Paywall muestra el botón "Desbloquear Premium - $5000".
+- Escribe la Cloud Function `createPaymentPreference` que genere un link de pago de Checkout Pro por $5000 ARS y retorne el `init_point` al frontend para redirigir al usuario.
+- Debes incluir el `notification_url` hacia el Webhook.
+
+5. **Webhook y Desbloqueo de Premium:**
+- Escribe la Cloud Function `mpWebhook` que reciba los avisos de IPN. Si el pago está "approved", suma `+1` al campo `creditos` del usuario.
+- El Frontend debe escuchar en tiempo real (`onSnapshot`) el documento del usuario. Si detecta `creditos > 0`, automáticamente oculta el Paywall Overlay en todas las pestañas, renderiza las listas completas sin recortes, muestra un botón para exportar a .txt/CSV, y descuenta 1 crédito en la base de datos (consumiendo el uso).
+
+**ENTREGABLES ESPERADOS:**
+Genera el código paso a paso:
+1. Las configuraciones de Firebase y reglas de Firestore.
+2. El código del Backend (Cloud Functions) completo con Mercado Pago.
+3. El Frontend (ya sea en React o JS puro actualizado) integrado con Firebase Auth y la lógica para ocultar/mostrar el Paywall basándose en los créditos.
