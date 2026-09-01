@@ -30,7 +30,7 @@
         }
 
         .container { max-width: 900px; width: 100%; }
-        header { text-align: center; margin-bottom: 40px; }
+        header { text-align: center; margin-bottom: 20px; }
         
         h1 {
             font-size: 3em;
@@ -42,6 +42,35 @@
         }
 
         p.subtitle { color: var(--text-muted); font-size: 1.1em; }
+
+        /* Estilos del Login */
+        .auth-container {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 15px;
+            border: 1px solid #3a3a48;
+        }
+
+        .btn-google {
+            background: white;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s;
+        }
+
+        .btn-google:hover { transform: scale(1.05); }
+        .btn-google img { width: 20px; height: 20px; }
+        #user-greeting-auth { display: none; color: var(--success); font-weight: bold; font-size: 1.1em; }
 
         /* Estilos del manual de instrucciones */
         .instructions-box {
@@ -224,8 +253,22 @@
 <div class="container">
     <header>
         <h1>FiltroInstagram</h1>
-        <p class="subtitle" id="user-greeting">Herramienta 100% gratuita y privada</p>
+        <p class="subtitle">Auditoría de seguidores</p>
     </header>
+
+    <!-- SECCIÓN DE AUTENTICACIÓN -->
+    <div class="auth-container">
+        <button id="btn-login" class="btn-google">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+            </svg>
+            Ingresar con Google
+        </button>
+        <p id="user-greeting-auth"></p>
+    </div>
 
     <!-- INSTRUCCIONES AGREGADAS -->
     <div class="instructions-box" id="instructions">
@@ -293,7 +336,57 @@
     </div>
 </div>
 
-<!-- LÓGICA DE VALIDACIÓN Y RENDERIZADO -->
+<!-- ========================================== -->
+<!-- SCRIPT 1: AUTENTICACIÓN CON FIREBASE       -->
+<!-- ========================================== -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // Configuración real de tu proyecto
+    const firebaseConfig = {
+        apiKey: "AIzaSyAM4A5XKkWLRmGWxfk09s2mv4KDuGJe94g",
+        authDomain: "filtroinstagram-45f1c.firebaseapp.com",
+        projectId: "filtroinstagram-45f1c",
+        storageBucket: "filtroinstagram-45f1c.firebasestorage.app",
+        messagingSenderId: "1040203431008",
+        appId: "1:1040203431008:web:47db2eafdc311a4055d705",
+        measurementId: "G-6WD1RN2SK7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const btnLogin = document.getElementById('btn-login');
+    const userGreeting = document.getElementById('user-greeting-auth');
+
+    btnLogin.addEventListener('click', () => {
+        signInWithPopup(auth, provider)
+            .then((result) => {
+                console.log("Ingreso exitoso", result.user);
+            })
+            .catch((error) => {
+                console.error("Error al iniciar sesión", error);
+                alert("Hubo un error al iniciar sesión. Revisá la consola (F12) para más detalles.");
+            });
+    });
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            btnLogin.style.display = 'none';
+            userGreeting.style.display = 'block';
+            userGreeting.textContent = `¡Hola, ${user.displayName}! Listo para auditar.`;
+        } else {
+            btnLogin.style.display = 'inline-flex';
+            userGreeting.style.display = 'none';
+        }
+    });
+</script>
+
+<!-- ========================================== -->
+<!-- SCRIPT 2: LÓGICA ORIGINAL DE TU APP        -->
+<!-- ========================================== -->
 <script>
     let listasData = { unfollowers: [], fans: [], mutuals: [] };
     window.currentTab = 'unfollowers';
@@ -440,11 +533,10 @@
         window.renderizarLista(tipo);
     }
 
-    window.renderizarLista = function(tipo) {
+    window.renderizarLista = function(tipo, mostrarTodos = false) {
         const listaUI = document.getElementById('users-list');
         const listWrapper = document.getElementById('list-wrapper');
         
-        // Limpiamos todo
         listaUI.innerHTML = "";
         const botonesViejos = document.querySelectorAll('.btn-exportar');
         botonesViejos.forEach(btn => btn.remove());
@@ -457,21 +549,13 @@
             return;
         }
 
-        // Renderizamos usuarios reales
-        dataTotal.forEach(user => {
-            const li = document.createElement('li');
-            li.innerHTML = `<a href="https://instagram.com/${user}" target="_blank">${user}</a>`;
-            listaUI.appendChild(li);
-        });
-
-        // Agregamos botón exportar
         const btnExport = document.createElement('button');
         btnExport.className = 'btn-main active btn-exportar';
-        btnExport.style.margin = '20px';
+        btnExport.style.margin = '20px 20px 0 20px';
         btnExport.style.width = 'calc(100% - 40px)';
         btnExport.style.padding = '12px';
         btnExport.style.fontSize = '1em';
-        btnExport.textContent = `📥 Descargar lista (.txt)`;
+        btnExport.textContent = `📥 Descargar lista (.txt) - ${dataTotal.length} usuarios`;
         
         btnExport.onclick = () => {
             const texto = dataTotal.join('\n');
@@ -484,7 +568,33 @@
             URL.revokeObjectURL(url);
         };
 
-        listWrapper.appendChild(btnExport);
+        listWrapper.insertBefore(btnExport, listaUI);
+
+        const limiteVisual = 15;
+        const usuariosAMostrar = mostrarTodos ? dataTotal : dataTotal.slice(0, limiteVisual);
+
+        usuariosAMostrar.forEach(user => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="https://instagram.com/${user}" target="_blank">${user}</a>`;
+            listaUI.appendChild(li);
+        });
+
+        if (!mostrarTodos && dataTotal.length > limiteVisual) {
+            const liCargarMas = document.createElement('li');
+            liCargarMas.style.gridColumn = '1/-1'; 
+            liCargarMas.style.justifyContent = 'center';
+            liCargarMas.style.background = 'transparent';
+
+            const btnCargarMas = document.createElement('button');
+            btnCargarMas.className = 'tab-btn active';
+            btnCargarMas.textContent = `👁️ Mostrar los ${dataTotal.length - limiteVisual} restantes`;
+            btnCargarMas.style.width = '100%';
+            btnCargarMas.onclick = () => window.renderizarLista(tipo, true); 
+
+            liCargarMas.appendChild(btnCargarMas);
+            listaUI.appendChild(liCargarMas);
+        }
+
         listWrapper.style.height = "auto";
     }
 </script>
