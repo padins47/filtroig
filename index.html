@@ -280,11 +280,14 @@
             <button class="tab-btn" onclick="window.switchTab('mutuals', this)">
                 Mutuos <span class="badge" id="badge-mutuals" style="background: var(--success);">0</span>
             </button>
+            <!-- NUEVO BOTÓN: ELIMINADAS -->
+            <button class="tab-btn" onclick="window.switchTab('eliminadas', this)">
+                Eliminadas <span class="badge" id="badge-eliminadas" style="background: #555;">0</span>
+            </button>
         </div>
 
         <div class="list-wrapper" id="list-wrapper">
             <ul class="users-list" id="users-list"></ul>
-            <!-- El botón de exportar y el cartel freemium se inyectan acá vía JS -->
         </div>
     </div>
 </div>
@@ -341,12 +344,13 @@
 </script>
 
 <!-- ========================================== -->
-<!-- SCRIPT 2: LÓGICA PRINCIPAL (CON BUSCADOR Y FREEMIUM) -->
+<!-- SCRIPT 2: LÓGICA PRINCIPAL (CON FILTRO DE FANTASMAS) -->
 <!-- ========================================== -->
 <script>
-    let listasData = { unfollowers: [], fans: [], mutuals: [] };
+    // Ahora iniciamos con las 4 listas
+    let listasData = { unfollowers: [], fans: [], mutuals: [], eliminadas: [] };
     window.currentTab = 'unfollowers';
-    window.terminoBusqueda = ''; // Para el buscador en tiempo real
+    window.terminoBusqueda = ''; 
 
     window.validarArchivo = function(input, nombreEsperado, idBadgeExito, idBadgeError) {
         const badgeExito = document.getElementById(idBadgeExito);
@@ -382,7 +386,6 @@
         }
     }
 
-    // EXTRACCIÓN UNIVERSAL Y BLINDADA PARA INSTAGRAM
     function extraerUsuarios(data) {
         let users = new Set();
         try {
@@ -428,7 +431,7 @@
         } catch (error) {
             console.error("Error crítico procesando estructura JSON:", error);
         }
-        return Array.from(users).filter(u => u !== ''); // Eliminar vacíos por seguridad
+        return Array.from(users).filter(u => u !== ''); 
     }
 
     function leerArchivoJson(file) {
@@ -451,12 +454,27 @@
         btn.classList.remove('active');
 
         try {
-            const setFollowers = new Set(await leerArchivoJson(fileFollowers));
-            const setFollowing = new Set(await leerArchivoJson(fileFollowing));
+            const rawFollowers = await leerArchivoJson(fileFollowers);
+            const rawFollowing = await leerArchivoJson(fileFollowing);
 
+            // FILTRO INTELIGENTE: Detectamos las cuentas eliminadas
+            const validFollowers = rawFollowers.filter(u => !u.startsWith('__deleted__'));
+            const validFollowing = rawFollowing.filter(u => !u.startsWith('__deleted__'));
+
+            // Guardamos todos los fantasmas únicos
+            const fantasmas = [...new Set([
+                ...rawFollowers.filter(u => u.startsWith('__deleted__')),
+                ...rawFollowing.filter(u => u.startsWith('__deleted__'))
+            ])].sort();
+
+            const setFollowers = new Set(validFollowers);
+            const setFollowing = new Set(validFollowing);
+
+            // Armamos las listas limpias
             listasData.unfollowers = [...setFollowing].filter(x => !setFollowers.has(x)).sort();
             listasData.fans = [...setFollowers].filter(x => !setFollowing.has(x)).sort();
             listasData.mutuals = [...setFollowers].filter(x => setFollowing.has(x)).sort();
+            listasData.eliminadas = fantasmas; // Lista de fantasmas
 
             document.getElementById('total-followers').textContent = setFollowers.size;
             document.getElementById('total-following').textContent = setFollowing.size;
@@ -469,21 +487,14 @@
             document.getElementById('badge-unfollowers').textContent = listasData.unfollowers.length;
             document.getElementById('badge-fans').textContent = listasData.fans.length;
             document.getElementById('badge-mutuals').textContent = listasData.mutuals.length;
+            document.getElementById('badge-eliminadas').textContent = listasData.eliminadas.length;
 
-            // Ocultamos las secciones previas de forma segura
-            const uploadSec = document.getElementById('upload-section');
-            if (uploadSec) uploadSec.style.display = 'none';
+            const uiElementsToHide = ['upload-section', 'instructions', 'security-badge', 'auth-container', 'btn-analyze'];
+            uiElementsToHide.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.style.display = 'none';
+            });
             
-            const instruccionesBox = document.getElementById('instructions');
-            if (instruccionesBox) instruccionesBox.style.display = 'none';
-            
-            const authContainer = document.getElementById('auth-container');
-            if (authContainer) authContainer.style.display = 'none';
-
-            const securityBadge = document.getElementById('security-badge');
-            if (securityBadge) securityBadge.style.display = 'none';
-
-            btn.style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             
             window.currentTab = 'unfollowers';
@@ -497,7 +508,6 @@
         }
     }
 
-    // Buscador en tiempo real
     window.filtrarBusqueda = function(valor) {
         window.terminoBusqueda = valor.toLowerCase();
         window.renderizarLista(window.currentTab);
@@ -514,12 +524,10 @@
         const listaUI = document.getElementById('users-list');
         const listWrapper = document.getElementById('list-wrapper');
         
-        // Limpiar el DOM anterior
         listaUI.innerHTML = "";
         const elementosExtras = listWrapper.querySelectorAll('.btn-exportar, .teaser-box');
         elementosExtras.forEach(el => el.remove());
 
-        // 1. Filtrar por buscador
         let dataFiltrada = listasData[tipo];
         if(window.terminoBusqueda !== '') {
             dataFiltrada = dataFiltrada.filter(user => user.toLowerCase().includes(window.terminoBusqueda));
@@ -530,20 +538,24 @@
             return;
         }
 
-        // 2. Lógica Freemium (Límite de 15 si no está logueado)
         const limiteVisual = 15;
-        const estaDesbloqueado = window.isUserPremium; // Viene del Auth
+        const estaDesbloqueado = window.isUserPremium; 
         const usuariosAMostrar = estaDesbloqueado ? dataFiltrada : dataFiltrada.slice(0, limiteVisual);
         const usuariosOcultos = dataFiltrada.length - usuariosAMostrar.length;
 
-        // Renderizar usuarios visibles
         usuariosAMostrar.forEach(user => {
             const li = document.createElement('li');
-            li.innerHTML = `<a href="https://instagram.com/${user}" target="_blank">${user}</a>`;
+            
+            // Si es un fantasma eliminado, lo mostramos distinto
+            if(user.startsWith('__deleted__')) {
+                li.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">👻 Cuenta Eliminada</span>`;
+            } else {
+                li.innerHTML = `<a href="https://instagram.com/${user}" target="_blank">${user}</a>`;
+            }
+            
             listaUI.appendChild(li);
         });
 
-        // 3. Renderizar Efecto Blur y Paywall si hay ocultos
         if (!estaDesbloqueado && usuariosOcultos > 0) {
             const bultos = Math.min(usuariosOcultos, 3);
             for(let i=0; i<bultos; i++) {
@@ -564,7 +576,6 @@
             listWrapper.appendChild(teaser);
         }
 
-        // 4. Botón de Exportación (Descarga solo lo que el usuario tiene derecho a ver)
         const btnExport = document.createElement('button');
         btnExport.className = 'btn-main active btn-exportar';
         btnExport.style.margin = '0 20px 20px 20px';
@@ -578,7 +589,6 @@
             btnExport.textContent = `📥 Descargar Lista Completa (.txt)`;
         }
         
-        // Función 100% segura para el TXT
         btnExport.addEventListener('click', () => {
             const texto = usuariosAMostrar.join('\n');
             const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
@@ -586,7 +596,7 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = `FiltroInstagram_${tipo}.txt`;
-            document.body.appendChild(a); // Requisito en algunos navegadores
+            document.body.appendChild(a); 
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
