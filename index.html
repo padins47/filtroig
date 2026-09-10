@@ -333,13 +333,13 @@
     <div class="instructions-box" id="instructions">
         <b>¿Cómo obtengo mis archivos de forma segura?</b>
         <ol>
-           <ol>
-    <li>Entrá a tu perfil de Instagram y tocá las <b>tres líneas</b> (arriba a la derecha).</li>
-    <li>Andá a <b>Centro de cuentas</b> > <b>Tu información y permisos</b> > <b>Exportar tu información</b>.</li>
-    <li>Tocá en <b>Crear exportación</b>, elegí la cuenta a auditar y seleccioná <b>Exportar al dispositivo</b>.</li>
-    <li>⚠️ <b>¡CLAVE!</b> Marcá solo los archivos "Seguidores y seguidos". Elegí tu Gmail de destino, cambiá el Formato a <b>JSON</b> y el Intervalo a <b>Desde el principio</b>.</li>
-    <li><b>Confirmá la exportación</b>. Cuando te llegue el mail, descargá el ZIP, extraelo y arrastrá los archivos .json abajo.</li>
-</ol>
+            <li>Entrá a tu perfil de Instagram y tocá las <b>tres líneas</b> (arriba a la derecha).</li>
+            <li>Andá a <b>Centro de cuentas</b> > <b>Tu información y permisos</b> > <b>Exportar tu información</b>.</li>
+            <li>Tocá en <b>Crear exportación</b>, elegí la cuenta a auditar y seleccioná <b>Exportar al dispositivo</b>.</li>
+            <li>⚠️ <b>¡CLAVE!</b> Marcá solo los archivos "Seguidores y seguidos". Elegí tu Gmail de destino, cambiá el Formato a <b>JSON</b> y el Intervalo a <b>Desde el principio</b>.</li>
+            <li><b>Confirmá la exportación</b>. Cuando te llegue el mail, descargá el ZIP, extraelo y arrastrá los archivos .json abajo.</li>
+        </ol>
+    </div>
 
     <div class="upload-grid" id="upload-section">
         <div class="upload-card" id="card-followers">
@@ -495,29 +495,45 @@
         }
     }
 
+    // EXTRACCIÓN UNIVERSAL Y BLINDADA PARA INSTAGRAM
     function extraerUsuarios(data) {
         let users = new Set();
         try {
+            // Caso 1: Array directo (como followers_1.json)
             if (Array.isArray(data)) {
                 data.forEach(item => {
                     if (item.string_list_data && item.string_list_data.length > 0 && item.string_list_data[0].value) {
                         users.add(item.string_list_data[0].value.trim());
+                    } else if (item.title) {
+                        users.add(item.title.trim());
                     }
                 });
-            } else if (data && data.relationships_following && Array.isArray(data.relationships_following)) {
+            } 
+            // Caso 2: Objeto con relationships_following (como following.json)
+            else if (data && data.relationships_following && Array.isArray(data.relationships_following)) {
                 data.relationships_following.forEach(item => {
-                    if (item.title) users.add(item.title.trim());
+                    if (item.title && item.title !== "") {
+                        users.add(item.title.trim());
+                    } else if (item.string_list_data && item.string_list_data.length > 0 && item.string_list_data[0].value) {
+                        users.add(item.string_list_data[0].value.trim());
+                    }
                 });
-            } else {
+            } 
+            // Caso 3: Fallback Universal (Búsqueda recursiva profunda)
+            else {
                 function buscarUsuarios(obj) {
                     if (typeof obj === 'object' && obj !== null) {
                         if (Array.isArray(obj)) {
-                            for (let item of obj) buscarUsuarios(item);
+                            obj.forEach(item => buscarUsuarios(item));
                         } else {
                             if (obj.string_list_data && Array.isArray(obj.string_list_data) && obj.string_list_data.length > 0) {
                                 let userInfo = obj.string_list_data[0];
-                                if (userInfo && userInfo.value) users.add(userInfo.value.trim());
-                                else if (obj.title) users.add(obj.title.trim());
+                                if (userInfo && userInfo.value && userInfo.value !== "") {
+                                    users.add(userInfo.value.trim());
+                                }
+                            }
+                            if (obj.title && typeof obj.title === 'string' && obj.title.trim() !== '') {
+                                users.add(obj.title.trim());
                             }
                             for (let key in obj) {
                                 if (typeof obj[key] === 'object') buscarUsuarios(obj[key]);
@@ -528,9 +544,9 @@
                 buscarUsuarios(data);
             }
         } catch (error) {
-            console.error("Error al procesar JSON:", error);
+            console.error("Error crítico procesando estructura JSON:", error);
         }
-        return Array.from(users);
+        return Array.from(users).filter(u => u !== ''); // Eliminar vacíos
     }
 
     function leerArchivoJson(file) {
